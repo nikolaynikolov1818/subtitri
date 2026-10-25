@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Субтитри</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Rubik:wght@700;900&family=Unbounded:wght@600;800&family=Manrope:wght@500;700;800&family=Russo+One&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F0EC; --surface:#FFFFFF; --ink:#16171C; --muted:#646875; --line:#DDDAD3; --soft:#E9E6E0;
+  --accent:#E5322D; --accent-ink:#FFFFFF; --hi:#FFD43B;
+  box-sizing:border-box; color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){ --bg:#14161C; --surface:#1D2028; --ink:#F1EFEA; --muted:#9A9DA8; --line:#2E323C; --soft:#262A33; --accent:#FF4A42; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --bg:#14161C; --surface:#1D2028; --ink:#F1EFEA; --muted:#9A9DA8; --line:#2E323C; --soft:#262A33; --accent:#FF4A42; color-scheme:dark; }
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;padding:18px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-family:Unbounded,Manrope,sans-serif;font-weight:800;font-size:clamp(1.6rem,4vw,2.3rem);line-height:1;margin:0;letter-spacing:-.02em}
+h1 em{font-style:normal;background:var(--hi);color:#16171C;padding:0 .18em;border-radius:.15em}
+.sub{color:var(--muted);margin:6px 0 0}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-weight:800;background:var(--ink);color:var(--bg)}
+.btn.acc{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:7px 11px;font-size:.88rem;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:default}
+.drop{border:2px dashed var(--line);border-radius:22px;padding:56px 20px;text-align:center;background:var(--surface)}
+.drop.over{border-color:var(--accent);background:var(--soft)}
+.drop h2{font-family:Unbounded,sans-serif;font-size:1.3rem;margin:0 0 8px}
+.studio{display:grid;grid-template-columns:minmax(260px,420px) 1fr;gap:18px;align-items:start}
+@media (max-width:820px){.studio{grid-template-columns:1fr}}
+.preview{position:sticky;top:12px}
+.frame{position:relative;background:#000;border-radius:18px;overflow:hidden;margin:0 auto}
+.frame video{display:block;width:100%;height:100%;object-fit:contain}
+.frame canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.pctl{display:flex;gap:8px;align-items:center;margin-top:10px}
+.pctl input[type=range]{flex:1;accent-color:var(--accent)}
+.pctl .t{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.85rem;min-width:84px;text-align:right}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:transparent;border-radius:12px;padding:9px 14px;font-weight:800;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.note{color:var(--muted);font-size:.86rem;margin:6px 0 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.prog{height:10px;background:var(--soft);border-radius:999px;overflow:hidden;margin:10px 0 4px}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.caps{display:grid;gap:6px;max-height:58vh;overflow:auto;margin-top:12px;padding-right:4px}
+.cap{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-radius:12px;border:1px solid transparent}
+.cap.on{border-color:var(--accent);background:var(--soft)}
+.cap .tm{font-variant-numeric:tabular-nums;font-size:.8rem;color:var(--muted);background:none;border:0;padding:4px}
+.cap input{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:7px 10px;width:100%;min-width:0}
+.cap .x{border:0;background:none;color:var(--muted);font-size:1rem;padding:4px 6px}
+.presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px}
+.preset{border:1px solid var(--line);border-radius:14px;background:#2A2D36;padding:14px 8px;text-align:center;min-height:74px;display:grid;place-items:center;line-height:1.1}
+.preset[aria-pressed="true"]{box-shadow:0 0 0 3px var(--accent)}
+.preset small{display:block;color:#C9CCD4;font:600 .72rem Manrope,sans-serif;margin-top:6px;letter-spacing:0;text-transform:none;text-shadow:none;-webkit-text-stroke:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:16px}
+@media (max-width:520px){.grid2{grid-template-columns:1fr}}
+.ctl{display:grid;gap:4px}
+.ctl label{font-weight:700;font-size:.88rem}
+.ctl select,.ctl input[type=text]{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px}
+.ctl input[type=range]{accent-color:var(--accent);width:100%}
+.ctl .line{display:flex;gap:8px;align-items:center}
+.ctl input[type=color]{width:42px;height:34px;border:1px solid var(--line);border-radius:8px;background:none;padding:2px}
+.ctl output{font-weight:800;font-size:.82rem;min-width:2.5em;text-align:right}
+.chk{display:flex;gap:8px;align-items:center;font-weight:700;font-size:.9rem}
+.chk input{width:20px;height:20px;accent-color:var(--accent)}
+h3{font-family:Unbounded,sans-serif;font-size:.95rem;margin:18px 0 4px}
+textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 12px;resize:vertical}
+.toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,200%);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:700;transition:transform .3s;z-index:60;max-width:90vw;text-align:center}
+.toast.show{transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.toast,.prog i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Субтитри <em>за видео</em></h1>
+      <p class="sub">Качи видео, AI-ят пише какво казваш, ти избираш стила.</p>
+    </div>
+    <button class="btn ghost sm" id="newVid" hidden>Ново видео</button>
+  </header>
+
+  <label class="drop" id="drop" for="fileIn">
+    <h2>🎬 Пусни видеото тук</h2>
+    <div class="note">или кликни, за да го избереш (MP4, MOV, WebM)</div>
+    <input type="file" id="fileIn" accept="video/*" hidden>
+  </label>
+
+  <div class="studio" id="studio" hidden>
+    <div class="preview">
+      <div class="frame" id="frame"><video id="vid" playsinline preload="auto"></video><canvas id="ov"></canvas></div>
+      <div class="pctl">
+        <button class="btn sm" id="playBtn" aria-label="Пусни">▶</button>
+        <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Позиция">
+        <span class="t" id="tm">0:00 / 0:00</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-t="text" aria-selected="true">1. Текст</button>
+        <button role="tab" data-t="style" aria-selected="false">2. Стил</button>
+        <button role="tab" data-t="export" aria-selected="false">3. Изтегли</button>
+      </div>
+
+      <section id="t-text">
+        <div id="asrBox">
+          <div class="row">
+            <select id="modelSel" aria-label="Модел">
+              <option value="Xenova/whisper-small">Точен (по-бавен, ~250 MB първия път)</option>
+              <option value="Xenova/whisper-base">Бърз (по-неточен, ~80 MB първия път)</option>
+            </select>
+            <button class="btn acc" id="asrBtn">✨ Разпознай говора</button>
+          </div>
+          <div class="prog" id="prog" hidden><i id="progBar"></i></div>
+          <p class="note" id="asrNote">Работи изцяло на твоя компютър. Първия път сваля модела, после е по-бързо.</p>
+        </div>
+        <details style="margin-top:12px">
+          <summary class="note" style="cursor:pointer">Или напиши текста сам</summary>
+          <textarea id="manualIn" placeholder="Напиши всичко, което казваш във видеото. Ще го разпределя равномерно по времето."></textarea>
+          <button class="btn sm" id="manualBtn" style="margin-top:8px">Сложи този текст</button>
+        </details>
+        <div class="row" style="margin-top:14px;justify-content:space-between">
+          <strong id="capCount"></strong>
+          <span class="note">Кликни часа, за да скочиш там. Поправи грешките директно.</span>
+        </div>
+        <div class="caps" id="caps"></div>
+      </section>
+
+      <section id="t-style" hidden>
+        <h3 style="margin-top:0">Готови стилове</h3>
+        <div class="presets" id="presets"></div>
+        <h3>Настрой сам</h3>
+        <div class="grid2" id="ctls"></div>
+      </section>
+
+      <section id="t-export" hidden>
+        <h3 style="margin-top:0">🎥 Видео със субтитрите</h3>
+        <p class="note">Пуска видеото от началото и го записва със субтитрите вътре. Трае колкото самото видео. Не превключвай таба, докато върви.</p>
+        <div class="row" style="margin-top:10px"><button class="btn acc" id="renderBtn">Направи видеото</button><button class="btn ghost" id="cancelBtn" hidden>Спри</button></div>
+        <div class="prog" id="rprog" hidden><i id="rbar"></i></div>
+        <p class="note" id="rnote"></p>
+        <h3>📄 Файл със субтитри (SRT)</h3>
+        <p class="note">Ако искаш да ги сложиш в CapCut или YouTube сам. Стилът не се пренася, само текстът и времената.</p>
+        <button class="btn" id="srtBtn" style="margin-top:10px">Изтегли .srt</button>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const el = (t,c,x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
+  const pad = n => String(n).padStart(2,"0");
+  const fmt = s => { s = Math.max(0, s||0); return Math.floor(s/60) + ":" + pad(Math.floor(s%60)); };
+  const fmtD = s => { s = Math.max(0, s||0); return Math.floor(s/60) + ":" + pad(Math.floor(s%60)) + "." + Math.floor((s%1)*10); };
+  function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("show"), 3000); }
+
+  // ---------- стилове ----------
+  const FONTS = [["Montserrat",900],["Rubik",900],["Unbounded",800],["Manrope",800],["Russo One",400],["Oswald",700]];
+  const PRESETS = [
+    {name:"TikTok", font:"Montserrat", upper:true, size:8, color:"#FFFFFF", hi:"#FFD43B", stroke:14, strokeColor:"#000000", bg:"none", bgColor:"#000000", bgOpacity:70, glow:0, glowColor:"#000000", pos:68, words:3, anim:"pop"},
+    {name:"Маркер", font:"Montserrat", upper:true, size:8, color:"#FFFFFF", hi:"#FFFFFF", stroke:10, strokeColor:"#000000", bg:"word", bgColor:"#E5322D", bgOpacity:100, glow:0, glowColor:"#000000", pos:68, words:3, anim:"pop"},
+    {name:"Кутия", font:"Rubik", upper:false, size:6, color:"#FFFFFF", hi:"#FFD43B", stroke:0, strokeColor:"#000000", bg:"box", bgColor:"#000000", bgOpacity:75, glow:0, glowColor:"#000000", pos:72, words:5, anim:"none"},
+    {name:"Жълт фон", font:"Rubik", upper:true, size:7, color:"#16171C", hi:"#E5322D", stroke:0, strokeColor:"#000000", bg:"line", bgColor:"#FFD43B", bgOpacity:100, glow:0, glowColor:"#000000", pos:70, words:4, anim:"none"},
+    {name:"Неон", font:"Unbounded", upper:true, size:7, color:"#FFFFFF", hi:"#22D3EE", stroke:0, strokeColor:"#000000", bg:"none", bgColor:"#000000", bgOpacity:70, glow:22, glowColor:"#22D3EE", pos:66, words:3, anim:"pop"},
+    {name:"Огън", font:"Russo One", upper:true, size:8, color:"#FFFFFF", hi:"#FF7A00", stroke:12, strokeColor:"#000000", bg:"none", bgColor:"#000000", bgOpacity:70, glow:10, glowColor:"#FF3D00", pos:66, words:2, anim:"pop"},
+    {name:"Зелен акцент", font:"Oswald", upper:true, size:9, color:"#FFFFFF", hi:"#A3E635", stroke:10, strokeColor:"#000000", bg:"none", bgColor:"#000000", bgOpacity:70, glow:0, glowColor:"#000000", pos:64, words:3, anim:"pop"},
+    {name:"Минимал", font:"Manrope", upper:false, size:5.5, color:"#FFFFFF", hi:"#FFFFFF", stroke:0, strokeColor:"#000000", bg:"none", bgColor:"#000000", bgOpacity:70, glow:14, glowColor:"#000000", pos:80, words:6, anim:"none"}
+  ];
+  const SKEY = "subtitri-style";
+  let ST = null;
+  try { ST = JSON.parse(localStorage.getItem(SKEY)); } catch(e){}
+  if (!ST || !ST.font) ST = Object.assign({}, PRESETS[0]);
+  const saveST = () => { try { localStorage.setItem(SKEY, JSON.stringify(ST)); } catch(e){} };
+  const fontW = f => (FONTS.find(x => x[0] === f) || [f,800])[1];
+  async function loadFont(){ try { await document.fonts.load(fontW(ST.font) + ' 40px "' + ST.font + '"', "АБВабв"); } catch(e){} }
+
+  // ---------- данни ----------
+  let words = [];   // {w, s, e}
+  let caps = [];    // {i0, i1, s, e}
+  let fileName = "video";
+  const vid = $("vid"), ov = $("ov");
+
+  function build(){
+    caps = [];
+    let cur = null;
+    words.forEach((w,i) => {
+      const prev = words[i-1];
+      const brk = !cur || (i - cur.i0) >= ST.words || (prev && (w.s - prev.e) > 0.7) || (prev && /[.!?…]$/.test(prev.w));
+      if (brk) { if (cur) caps.push(cur); cur = {i0:i, i1:i}; } else cur.i1 = i;
+    });
+    if (cur) caps.push(cur);
+    caps.forEach((c,k) => { c.s = words[c.i0].s; c.e = words[c.i1].e; const n = caps[k+1]; if (n && words[n.i0].s - c.e < 0.35) c.e = words[n.i0].s; });
+    renderCaps();
+  }
+  function capText(c){ return words.slice(c.i0, c.i1+1).map(w => w.w).join(" "); }
+
+  function renderCaps(){
+    const box = $("caps"); box.innerHTML = "";
+    $("capCount").textContent = caps.length ? caps.length + " реда субтитри" : "";
+    caps.forEach((c,k) => {
+      const r = el("div","cap"); r.dataset.k = k;
+      const t = el("button","tm",fmtD(c.s)); t.onclick = () => { vid.currentTime = c.s + 0.01; };
+      const inp = el("input"); inp.type = "text"; inp.value = capText(c); inp.setAttribute("aria-label","Текст на ред " + (k+1));
+      inp.onchange = () => editCap(c, inp.value);
+      inp.onfocus = () => { vid.currentTime = c.s + 0.01; };
+      const x = el("button","x","✕"); x.setAttribute("aria-label","Изтрий реда"); x.onclick = () => { words.splice(c.i0, c.i1-c.i0+1); build(); };
+      r.append(t, inp, x); box.append(r);
+    });
+  }
+  function spread(tokens, s, e){
+    const tot = tokens.reduce((a,t) => a + t.length + 1, 0) || 1; let t0 = s;
+    return tokens.map(tk => { const d = (e - s) * (tk.length + 1) / tot; const w = {w:tk, s:t0, e:t0 + d}; t0 += d; return w; });
+  }
+  function editCap(c, text){
+    const tokens = text.trim().split(/\s+/).filter(Boolean);
+    words.splice(c.i0, c.i1-c.i0+1, ...spread(tokens, words[c.i0].s, words[c.i1].e));
+    build();
+  }
+  function highlightRow(t){
+    const k = caps.findIndex(c => t >= c.s && t < c.e);
+    document.querySelectorAll(".cap.on").forEach(r => { if (+r.dataset.k !== k) r.classList.remove("on"); });
+    if (k >= 0) { const r = $("caps").children[k]; if (r && !r.classList.contains("on")) { r.classList.add("on"); if (document.activeElement.tagName !== "INPUT") r.scrollIntoView({block:"nearest"}); } }
+  }
+
+  // ---------- рисуване ----------
+  function hexA(hex, a){ const n = parseInt(hex.slice(1),16); return "rgba(" + (n>>16&255) + "," + (n>>8&255) + "," + (n&255) + "," + a + ")"; }
+  function rr(ctx,x,y,w,h,r){ r = Math.min(r, h/2, w/2); ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function draw(ctx, W, H, t){
+    ctx.clearRect(0,0,W,H);
+    const c = caps.find(c => t >= c.s && t < c.e); if (!c) return;
+    const ws = words.slice(c.i0, c.i1+1);
+    const fs = Math.round(W * ST.size / 100);
+    ctx.font = fontW(ST.font) + " " + fs + 'px "' + ST.font + '", sans-serif';
+    ctx.textBaseline = "middle";
+    const txt = w => ST.upper ? w.w.toLocaleUpperCase("bg") : w.w;
+    const space = ctx.measureText(" ").width;
+    const maxW = W * 0.86, lines = []; let line = [], lw = 0;
+    ws.forEach(w => { const m = ctx.measureText(txt(w)).width; if (line.length && lw + space + m > maxW) { lines.push({ws:line, w:lw}); line = []; lw = 0; } line.push({w, m}); lw += (line.length > 1 ? space : 0) + m; });
+    if (line.length) lines.push({ws:line, w:lw});
+    const lh = fs * 1.22, padX = fs * 0.32, padY = fs * 0.14;
+    const totalH = lines.length * lh;
+    let y0 = H * ST.pos / 100 - totalH/2 + lh/2;
+    const active = ws.findIndex(w => t >= w.s && t < w.e);
+    // фон за целия блок
+    if (ST.bg === "box") {
+      const bw = Math.max(...lines.map(l => l.w)) + padX*2;
+      ctx.fillStyle = hexA(ST.bgColor, ST.bgOpacity/100); rr(ctx, W/2 - bw/2, y0 - lh/2 - padY, bw, totalH + padY*2, fs*0.28); ctx.fill();
+    }
+    lines.forEach((L, li) => {
+      const y = y0 + li*lh;
+      let x = W/2 - L.w/2;
+      if (ST.bg === "line") { ctx.fillStyle = hexA(ST.bgColor, ST.bgOpacity/100); rr(ctx, x - padX, y - lh/2 + padY*0.4, L.w + padX*2, lh - padY*0.8, fs*0.2); ctx.fill(); }
+      L.ws.forEach(({w, m}) => {
+        const isA = ws.indexOf(w) === active;
+        const sc = isA && ST.anim === "pop" ? 1 + 0.12 * Math.max(0, 1 - (t - w.s)/0.18) + 0.04 : 1;
+        ctx.save(); ctx.translate(x + m/2, y); ctx.scale(sc, sc);
+        if (ST.bg === "word" && isA) { ctx.fillStyle = hexA(ST.bgColor, ST.bgOpacity/100); rr(ctx, -m/2 - padX*0.6, -lh/2 + padY*0.3, m + padX*1.2, lh - padY*0.6, fs*0.18); ctx.fill(); }
+        ctx.textAlign = "center";
+        if (ST.glow > 0) { ctx.shadowColor = ST.glowColor; ctx.shadowBlur = fs * ST.glow / 60; }
+        if (ST.stroke > 0) { ctx.lineJoin = "round"; ctx.lineWidth = fs * ST.stroke / 100; ctx.strokeStyle = ST.strokeColor; ctx.strokeText(txt(w), 0, 0); }
+        ctx.fillStyle = isA ? ST.hi : ST.color; ctx.fillText(txt(w), 0, 0);
+        ctx.restore();
+        x += m + space;
+      });
+    });
+  }
+
+  // ---------- преглед ----------
+  function sizeFrame(){
+    const vw = vid.videoWidth || 9, vh = vid.videoHeight || 16;
+    const f = $("frame"), maxH = Math.min(window.innerHeight * 0.78, 760);
+    const w = Math.min(f.parentElement.clientWidth, maxH * vw / vh);
+    f.style.width = w + "px"; f.style.height = (w * vh / vw) + "px";
+    const dpr = window.devicePixelRatio || 1;
+    ov.width = Math.round(w * dpr); ov.height = Math.round(w * vh / vw * dpr);
+  }
+  (function loop(){
+    if (!$("studio").hidden && vid.videoWidth) {
+      draw(ov.getContext("2d"), ov.width, ov.height, vid.currentTime);
+      $("tm").textContent = fmt(vid.currentTime) + " / " + fmt(vid.duration);
+      if (!seeking && vid.duration) $("seek").value = Math.round(vid.currentTime / vid.duration * 1000);
+      highlightRow(vid.currentTime);
+    }
+    requestAnimationFrame(loop);
+  })();
+  let seeking = false;
+  $("seek").oninput = e => { seeking = true; if (vid.duration) vid.currentTime = e.target.value/1000 * vid.duration; };
+  $("seek").onchange = () => { seeking = false; };
+  $("playBtn").onclick = () => { if (vid.paused) vid.play(); else vid.pause(); };
+  vid.onplay = () => { $("playBtn").textContent = "⏸"; };
+  vid.onpause = () => { $("playBtn").textContent = "▶"; };
+  vid.onclick = () => $("playBtn").click();
+  window.addEventListener("resize", () => { if (!$("studio").hidden) sizeFrame(); });
+
+  // ---------- файл ----------
+  let curFile = null;
+  function loadFile(f){
+    if (!f || !/^video\//.test(f.type) && !/\.(mp4|mov|webm|m4v)$/i.test(f.name)) { toast("Избери видео файл"); return; }
+    curFile = f; fileName = f.name.replace(/\.[^.]+$/, "");
+    if (vid.src) URL.revokeObjectURL(vid.src);
+    vid.src = URL.createObjectURL(f);
+    words = []; caps = []; renderCaps();
+    $("drop").hidden = true; $("studio").hidden = false; $("newVid").hidden = false;
+    vid.onloadedmetadata = () => { sizeFrame(); };
+  }
+  $("fileIn").onchange = e => loadFile(e.target.files[0]);
+  const drop = $("drop");
+  ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => loadFile(e.dataTransfer.files[0]));
+  $("newVid").onclick = () => { vid.pause(); $("studio").hidden = true; $("drop").hidden = false; $("newVid").hidden = true; $("fileIn").value = ""; };
+
+  // ---------- разпознаване (Whisper в браузъра) ----------
+  const WORKER = `
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2";
+env.allowLocalModels = false;
+let asr = null, cur = "";
+self.onmessage = async (e) => {
+  const { audio, model } = e.data;
+  try {
+    if (!asr || cur !== model) {
+      asr = await pipeline("automatic-speech-recognition", model, { dtype: "q8", progress_callback: p => self.postMessage({ type: "progress", p }) });
+      cur = model;
+    }
+    self.postMessage({ type: "status", msg: "listen" });
+    const base = { language: "bulgarian", task: "transcribe", chunk_length_s: 30, stride_length_s: 5 };
+    let out, mode = "word";
+    try { out = await asr(audio, Object.assign({ return_timestamps: "word" }, base)); }
+    catch (err) { mode = "seg"; out = await asr(audio, Object.assign({ return_timestamps: true }, base)); }
+    self.postMessage({ type: "done", chunks: out.chunks || [], text: out.text || "", mode });
+  } catch (err) { self.postMessage({ type: "error", msg: String((err && err.message) || err) }); }
+};`;
+  let worker = null;
+  async function getAudio(){
+    const buf = await curFile.arrayBuffer();
+    const ac = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    const dec = await ac.decodeAudioData(buf);
+    const n = dec.length, out = new Float32Array(n);
+    for (let ch = 0; ch < dec.numberOfChannels; ch++) { const d = dec.getChannelData(ch); for (let i = 0; i < n; i++) out[i] += d[i] / dec.numberOfChannels; }
+    ac.close();
+    return out;
+  }
+  function setProg(p, note){ $("prog").hidden = false; $("progBar").style.width = Math.round(p*100) + "%"; if (note) $("asrNote").textContent = note; }
+  $("asrBtn").onclick = async () => {
+    if (!curFile) return;
+    const btn = $("asrBtn"); btn.disabled = true;
+    setProg(0.02, "Вадя звука от видеото…");
+    let audio;
+    try { audio = await getAudio(); } catch(e) { btn.disabled = false; $("prog").hidden = true; $("asrNote").textContent = "Не успях да прочета звука от това видео. Пробвай с MP4."; return; }
+    try {
+      if (!worker) worker = new Worker(URL.createObjectURL(new Blob([WORKER], {type:"text/javascript"})), {type:"module"});
+    } catch(e) { btn.disabled = false; $("asrNote").textContent = "Този браузър не поддържа разпознаването. Ползвай Chrome на компютър."; return; }
+    const files = {};
+    let fake = 0, fakeIv = null;
+    worker.onmessage = e => {
+      const m = e.data;
+      if (m.type === "progress") {
+        const p = m.p;
+        if (p.status === "progress" && p.file) { files[p.file] = [p.loaded || 0, p.total || 0];
+          let l = 0, t = 0; Object.values(files).forEach(([a,b]) => { l += a; t += b; });
+          setProg(t ? 0.05 + 0.45 * l/t : 0.1, "Свалям модела (само първия път): " + Math.round(l/1048576) + " / " + Math.round(t/1048576) + " MB"); }
+      } else if (m.type === "status") {
+        setProg(0.5, "Слушам видеото… (може да отнеме 1–3 минути)");
+        fake = 0.5; fakeIv = setInterval(() => { fake = Math.min(0.95, fake + 0.01); setProg(fake); }, 1500);
+      } else if (m.type === "done") {
+        clearInterval(fakeIv); setProg(1, "Готово! Провери текста и поправи грешките.");
+        words = toWords(m.chunks, m.mode, m.text);
+        build(); btn.disabled = false; btn.textContent = "✨ Разпознай отново";
+        if (!words.length) $("asrNote").textContent = "Не чух говор във видеото. Провери дали има звук.";
+      } else if (m.type === "error") {
+        clearInterval(fakeIv); btn.disabled = false; $("prog").hidden = true;
+        $("asrNote").textContent = "Нещо се обърка: " + m.msg + ". Провери интернета (за първото сваляне) и опитай пак.";
+      }
+    };
+    worker.postMessage({ audio, model: $("modelSel").value }, [audio.buffer]);
+  };
+  function toWords(chunks, mode, text){
+    const dur = vid.duration || 0, out = [];
+    if (!chunks.length && text) return spread(text.trim().split(/\s+/), 0, dur);
+    chunks.forEach((c, i) => {
+      let [s, e] = c.timestamp || [0, null];
+      if (s == null) s = out.length ? out[out.length-1].e : 0;
+      if (e == null) e = chunks[i+1] && chunks[i+1].timestamp ? chunks[i+1].timestamp[0] : Math.min(dur || s + 1, s + 1.5);
+      const t = (c.text || "").trim(); if (!t) return;
+      if (mode === "word") out.push({w:t, s, e: Math.max(e, s + 0.08)});
+      else out.push(...spread(t.split(/\s+/), s, e));
+    });
+    return out;
+  }
+  $("manualBtn").onclick = () => {
+    const t = $("manualIn").value.trim(); if (!t) { toast("Напиши текста първо"); return; }
+    if (!vid.duration) { toast("Изчакай видеото да се зареди"); return; }
+    words = spread(t.split(/\s+/), 0.2, Math.max(0.5, vid.duration - 0.2)); build(); toast("Текстът е сложен. Пусни видеото и провери.");
+  };
+
+  // ---------- контроли за стил ----------
+  function renderPresets(){
+    const box = $("presets"); box.innerHTML = "";
+    PRESETS.forEach(p => {
+      const b = el("button","preset");
+      const s = el("span", null, p.upper ? "ДИСЦИПЛИНА" : "Дисциплина");
+      s.style.cssText = "font-family:'" + p.font + "',sans-serif;font-weight:" + fontW(p.font) + ";font-size:15px;color:" + p.color + ";" +
+        (p.stroke ? "-webkit-text-stroke:" + Math.max(1, p.stroke/6) + "px " + p.strokeColor + ";paint-order:stroke fill;" : "") +
+        (p.glow ? "text-shadow:0 0 8px " + p.glowColor + ";" : "") +
+        (p.bg !== "none" ? "background:" + hexA(p.bgColor, p.bgOpacity/100) + ";padding:2px 6px;border-radius:6px;" : "");
+      const s2 = el("span", null, p.upper ? " НОСИ" : " носи"); s2.style.color = p.hi;
+      const sp = el("span"); sp.append(s); s.append(s2);
+      b.append(sp, el("small", null, p.name));
+      b.setAttribute("aria-pressed", ST.name === p.name ? "true" : "false");
+      b.onclick = () => { ST = Object.assign({}, p); saveST(); loadFont(); renderPresets(); renderCtls(); build(); };
+      box.append(b);
+    });
+  }
+  function renderCtls(){
+    const box = $("ctls"); box.innerHTML = "";
+    const mk = (label, inner) => { const d = el("div","ctl"); d.append(el("label", null, label), inner); box.append(d); return d; };
+    const custom = () => { ST.name = "Мой стил"; saveST(); renderPresets(); };
+    // шрифт
+    const fsel = el("select"); FONTS.forEach(([f]) => { const o = new Option(f, f); o.style.fontFamily = f; fsel.append(o); }); fsel.value = ST.font;
+    fsel.onchange = () => { ST.font = fsel.value; custom(); loadFont(); }; mk("Шрифт", fsel);
+    const range = (label, key, min, max, step, suf, after) => {
+      const line = el("div","line"), r = el("input"); r.type = "range"; r.min = min; r.max = max; r.step = step; r.value = ST[key];
+      const o = el("output", null, ST[key] + (suf||"")); r.oninput = () => { ST[key] = +r.value; o.textContent = r.value + (suf||""); custom(); if (after) after(); };
+      line.append(r, o); mk(label, line);
+    };
+    const color = (label, key, extra) => {
+      const line = el("div","line"), c = el("input"); c.type = "color"; c.value = ST[key]; c.oninput = () => { ST[key] = c.value; custom(); };
+      line.append(c); if (extra) line.append(extra); mk(label, line);
+    };
+    range("Размер", "size", 3, 14, 0.5, "");
+    range("Позиция (отгоре надолу)", "pos", 10, 92, 1, "%");
+    range("Думи на ред", "words", 1, 8, 1, "", build);
+    const anim = el("select"); [["pop","Изскачане на думата"],["none","Без анимация"]].forEach(([v,t]) => anim.append(new Option(t,v))); anim.value = ST.anim;
+    anim.onchange = () => { ST.anim = anim.value; custom(); }; mk("Анимация", anim);
+    color("Цвят на текста", "color");
+    color("Цвят на активната дума", "hi");
+    const up = el("label","chk"), ui = el("input"); ui.type = "checkbox"; ui.checked = ST.upper; ui.onchange = () => { ST.upper = ui.checked; custom(); }; up.append(ui, document.createTextNode("ГЛАВНИ БУКВИ"));
+    mk("Букви", up);
+    range("Контур (дебелина)", "stroke", 0, 24, 1, "");
+    color("Цвят на контура", "strokeColor");
+    const bg = el("select"); [["none","Без фон"],["box","Кутия зад целия текст"],["line","Лента зад всеки ред"],["word","Фон само зад активната дума"]].forEach(([v,t]) => bg.append(new Option(t,v))); bg.value = ST.bg;
+    bg.onchange = () => { ST.bg = bg.value; custom(); }; mk("Фон", bg);
+    color("Цвят на фона", "bgColor");
+    range("Плътност на фона", "bgOpacity", 10, 100, 5, "%");
+    range("Сияние / сянка", "glow", 0, 40, 1, "");
+    color("Цвят на сиянието", "glowColor");
+  }
+
+  // ---------- износ ----------
+  let actx = null, srcNode = null, destNode = null, rendering = false, cancelR = false;
+  $("renderBtn").onclick = async () => {
+    if (!caps.length) { toast("Първо направи субтитрите (стъпка 1)"); return; }
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) { toast("Браузърът не може да записва видео. Ползвай Chrome."); return; }
+    await loadFont();
+    const W = vid.videoWidth, H = vid.videoHeight;
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const cx = cv.getContext("2d");
+    const lay = document.createElement("canvas"); lay.width = W; lay.height = H; const lx = lay.getContext("2d");
+    const stream = cv.captureStream(30);
+    try {
+      if (!actx) { actx = new AudioContext(); srcNode = actx.createMediaElementSource(vid); destNode = actx.createMediaStreamDestination(); srcNode.connect(actx.destination); srcNode.connect(destNode); }
+      await actx.resume();
+      destNode.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    } catch(e) {}
+    const types = ["video/mp4;codecs=avc1,mp4a.40.2","video/mp4","video/webm;codecs=vp9,opus","video/webm"];
+    const type = types.find(t => { try { return MediaRecorder.isTypeSupported(t); } catch(e) { return false; } }) || "";
+    let rec; try { rec = new MediaRecorder(stream, type ? {mimeType:type, videoBitsPerSecond:12000000} : undefined); } catch(e) { rec = new MediaRecorder(stream); }
+    const chunks = []; rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    rendering = true; cancelR = false;
+    $("renderBtn").disabled = true; $("cancelBtn").hidden = false; $("rprog").hidden = false; $("rnote").textContent = "Записвам… не превключвай таба.";
+    vid.pause(); vid.currentTime = 0; await new Promise(r => { vid.onseeked = () => { vid.onseeked = null; r(); }; });
+    const done = new Promise(r => { rec.onstop = r; });
+    rec.start(500);
+    const frame = () => {
+      cx.drawImage(vid, 0, 0, W, H);
+      draw(lx, W, H, vid.currentTime); cx.drawImage(lay, 0, 0);
+      $("rbar").style.width = (vid.currentTime / vid.duration * 100) + "%";
+      if (vid.ended || cancelR) { if (rec.state !== "inactive") rec.stop(); return; }
+      if (vid.requestVideoFrameCallback) vid.requestVideoFrameCallback(frame); else requestAnimationFrame(frame);
+    };
+    vid.onended = () => { if (rec.state !== "inactive") { setTimeout(() => rec.state !== "inactive" && rec.stop(), 200); } };
+    await vid.play(); frame();
+    await done; vid.onended = null; vid.pause();
+    rendering = false; $("renderBtn").disabled = false; $("cancelBtn").hidden = true;
+    if (cancelR) { $("rnote").textContent = "Спряно."; $("rprog").hidden = true; return; }
+    const mt = (rec.mimeType || type || "video/webm"), ext = /mp4/.test(mt) ? "mp4" : "webm";
+    const blob = new Blob(chunks, {type: mt}), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = fileName + "-subtitri." + ext; document.body.append(a); a.click(); a.remove();
+    $("rnote").textContent = "Готово! Видеото е в „Изтегляния“ (" + ext.toUpperCase() + ")." + (ext === "webm" ? " Ако CapCut не го приеме, конвертирай го в MP4." : "");
+    toast("Видеото е готово 🎬");
+  };
+  $("cancelBtn").onclick = () => { cancelR = true; };
+
+  function srtTime(s){ const ms = Math.round(s*1000); return pad(Math.floor(ms/3600000)) + ":" + pad(Math.floor(ms/60000)%60) + ":" + pad(Math.floor(ms/1000)%60) + "," + String(ms%1000).padStart(3,"0"); }
+  $("srtBtn").onclick = () => {
+    if (!caps.length) { toast("Първо направи субтитрите"); return; }
+    const txt = caps.map((c,i) => (i+1) + "\n" + srtTime(c.s) + " --> " + srtTime(c.e) + "\n" + capText(c)).join("\n\n") + "\n";
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([txt], {type:"text/plain"})); a.download = fileName + ".srt"; document.body.append(a); a.click(); a.remove();
+  };
+
+  // ---------- табове ----------
+  document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+    document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b ? "true" : "false"));
+    ["text","style","export"].forEach(t => $("t-"+t).hidden = t !== b.dataset.t);
+  });
+
+  renderPresets(); renderCtls(); loadFont();
+})();
+</script>
+</body>
+</html>
