@@ -81,6 +81,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
 .toast.show{transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.toast,.prog i{transition:none}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/fix-webm-duration@1.0.5/fix-webm-duration.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -117,6 +118,9 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
 
       <section id="t-text">
         <div id="asrBox">
+          <label for="scriptIn" style="font-weight:800;display:block;margin-bottom:6px">📝 Твоят текст (препоръчително)</label>
+          <textarea id="scriptIn" placeholder="Постави тук текста от промптъра. AI-ят ще намери кога казваш всяка дума, а на екрана ще излязат ТВОИТЕ думи, без грешки. Нещата в (скоби) и [квадратни скоби] се пропускат."></textarea>
+          <p class="note" style="margin-bottom:12px">Ако го оставиш празно, ще се ползва това, което AI-ят е чул.</p>
           <div class="row">
             <select id="modelSel" aria-label="Модел">
               <option value="Xenova/whisper-small">Точен (по-бавен, ~250 MB първия път)</option>
@@ -127,11 +131,10 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
           <div class="prog" id="prog" hidden><i id="progBar"></i></div>
           <p class="note" id="asrNote">Работи изцяло на твоя компютър. Първия път сваля модела, после е по-бързо.</p>
         </div>
-        <details style="margin-top:12px">
-          <summary class="note" style="cursor:pointer">Или напиши текста сам</summary>
-          <textarea id="manualIn" placeholder="Напиши всичко, което казваш във видеото. Ще го разпределя равномерно по времето."></textarea>
-          <button class="btn sm" id="manualBtn" style="margin-top:8px">Сложи този текст</button>
-        </details>
+        <div class="row" id="realignRow" style="margin-top:10px" hidden>
+          <button class="btn sm" id="realignBtn">↻ Нагласи текста отново</button>
+          <span class="note" style="margin:0">след като промениш текста горе, без ново слушане</span>
+        </div>
         <div class="row" style="margin-top:14px;justify-content:space-between">
           <strong id="capCount"></strong>
           <span class="note">Кликни часа, за да скочиш там. Поправи грешките директно.</span>
@@ -160,6 +163,9 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="blocker" hidden style="position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.35);display:grid;place-items:center;color:#fff;font:800 1.1rem Manrope,sans-serif;text-align:center;padding:20px">
+  <div><div style="font-size:2.4rem">⏺</div>Записвам видеото… Не пипай нищо и не сменяй таба.<br><button class="btn ghost" id="cancelBtn2" style="margin-top:14px;color:#fff;border-color:#fff">Спри</button></div>
+</div>
 
 <script>
 (function(){
@@ -193,7 +199,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
   // ---------- данни ----------
   let words = [];   // {w, s, e}
   let caps = [];    // {i0, i1, s, e}
-  let fileName = "video";
+  let fileName = "video", asrWords = [], curFile = null;
   const vid = $("vid"), ov = $("ov");
 
   function build(){
@@ -206,7 +212,18 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
     });
     if (cur) caps.push(cur);
     caps.forEach((c,k) => { c.s = words[c.i0].s; c.e = words[c.i1].e; const n = caps[k+1]; if (n && words[n.i0].s - c.e < 0.35) c.e = words[n.i0].s; });
-    renderCaps();
+    renderCaps(); saveProject();
+  }
+  // автоматично запазване на проекта (по име и размер на файла)
+  const projKey = () => curFile ? "subtitri-proj:" + curFile.name + ":" + curFile.size : null;
+  function saveProject(){
+    const k = projKey(); if (!k) return;
+    try { localStorage.setItem(k, JSON.stringify({words, asrWords, script: $("scriptIn").value, at: Date.now()})); } catch(e){}
+  }
+  function loadProject(){
+    const k = projKey(); if (!k) return false;
+    try { const p = JSON.parse(localStorage.getItem(k)); if (p && Array.isArray(p.words) && p.words.length) { words = p.words; asrWords = p.asrWords || []; $("scriptIn").value = p.script || ""; $("realignRow").hidden = !asrWords.length; return true; } } catch(e){}
+    return false;
   }
   function capText(c){ return words.slice(c.i0, c.i1+1).map(w => w.w).join(" "); }
 
@@ -249,7 +266,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
     ctx.font = fontW(ST.font) + " " + fs + 'px "' + ST.font + '", sans-serif';
     ctx.textBaseline = "middle";
     const txt = w => ST.upper ? w.w.toLocaleUpperCase("bg") : w.w;
-    const space = ctx.measureText(" ").width;
+    const space = ctx.measureText(" ").width + (ST.anim === "pop" ? fs * 0.14 : fs * 0.04);
     const maxW = W * 0.86, lines = []; let line = [], lw = 0;
     ws.forEach(w => { const m = ctx.measureText(txt(w)).width; if (line.length && lw + space + m > maxW) { lines.push({ws:line, w:lw}); line = []; lw = 0; } line.push({w, m}); lw += (line.length > 1 ? space : 0) + m; });
     if (line.length) lines.push({ws:line, w:lw});
@@ -268,7 +285,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
       if (ST.bg === "line") { ctx.fillStyle = hexA(ST.bgColor, ST.bgOpacity/100); rr(ctx, x - padX, y - lh/2 + padY*0.4, L.w + padX*2, lh - padY*0.8, fs*0.2); ctx.fill(); }
       L.ws.forEach(({w, m}) => {
         const isA = ws.indexOf(w) === active;
-        const sc = isA && ST.anim === "pop" ? 1 + 0.12 * Math.max(0, 1 - (t - w.s)/0.18) + 0.04 : 1;
+        const sc = isA && ST.anim === "pop" ? 1 + 0.08 * Math.max(0, 1 - (t - w.s)/0.18) + 0.03 : 1;
         ctx.save(); ctx.translate(x + m/2, y); ctx.scale(sc, sc);
         if (ST.bg === "word" && isA) { ctx.fillStyle = hexA(ST.bgColor, ST.bgOpacity/100); rr(ctx, -m/2 - padX*0.6, -lh/2 + padY*0.3, m + padX*1.2, lh - padY*0.6, fs*0.18); ctx.fill(); }
         ctx.textAlign = "center";
@@ -305,17 +322,17 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
   $("playBtn").onclick = () => { if (vid.paused) vid.play(); else vid.pause(); };
   vid.onplay = () => { $("playBtn").textContent = "⏸"; };
   vid.onpause = () => { $("playBtn").textContent = "▶"; };
-  vid.onclick = () => $("playBtn").click();
+  vid.onclick = () => { if (!rendering) $("playBtn").click(); };
   window.addEventListener("resize", () => { if (!$("studio").hidden) sizeFrame(); });
 
   // ---------- файл ----------
-  let curFile = null;
   function loadFile(f){
     if (!f || !/^video\//.test(f.type) && !/\.(mp4|mov|webm|m4v)$/i.test(f.name)) { toast("Избери видео файл"); return; }
     curFile = f; fileName = f.name.replace(/\.[^.]+$/, "");
     if (vid.src) URL.revokeObjectURL(vid.src);
     vid.src = URL.createObjectURL(f);
-    words = []; caps = []; renderCaps();
+    words = []; caps = []; asrWords = []; $("scriptIn").value = ""; $("realignRow").hidden = true;
+    if (loadProject()) { build(); toast("Върнах запазените ти субтитри за това видео ✓"); } else renderCaps();
     $("drop").hidden = true; $("studio").hidden = false; $("newVid").hidden = false;
     vid.onloadedmetadata = () => { sizeFrame(); };
   }
@@ -380,9 +397,12 @@ self.onmessage = async (e) => {
         fake = 0.5; fakeIv = setInterval(() => { fake = Math.min(0.95, fake + 0.01); setProg(fake); }, 1500);
       } else if (m.type === "done") {
         clearInterval(fakeIv); setProg(1, "Готово! Провери текста и поправи грешките.");
-        words = toWords(m.chunks, m.mode, m.text);
-        build(); btn.disabled = false; btn.textContent = "✨ Разпознай отново";
-        if (!words.length) $("asrNote").textContent = "Не чух говор във видеото. Провери дали има звук.";
+        asrWords = toWords(m.chunks, m.mode, m.text);
+        applyScript();
+        $("realignRow").hidden = !asrWords.length;
+        btn.disabled = false; btn.textContent = "✨ Разпознай отново";
+        if (!asrWords.length) $("asrNote").textContent = "Не чух говор във видеото. Провери дали има звук.";
+        else if (scriptTokens().length) $("asrNote").textContent = "Готово! Сложих твоя текст върху времената от видеото. Пусни и провери.";
       } else if (m.type === "error") {
         clearInterval(fakeIv); btn.disabled = false; $("prog").hidden = true;
         $("asrNote").textContent = "Нещо се обърка: " + m.msg + ". Провери интернета (за първото сваляне) и опитай пак.";
@@ -403,11 +423,52 @@ self.onmessage = async (e) => {
     });
     return out;
   }
-  $("manualBtn").onclick = () => {
-    const t = $("manualIn").value.trim(); if (!t) { toast("Напиши текста първо"); return; }
-    if (!vid.duration) { toast("Изчакай видеото да се зареди"); return; }
-    words = spread(t.split(/\s+/), 0.2, Math.max(0.5, vid.duration - 0.2)); build(); toast("Текстът е сложен. Пусни видеото и провери.");
-  };
+  // ---------- твоят текст върху времената от AI ----------
+  function scriptTokens(){
+    return $("scriptIn").value.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ").split(/\s+/).map(t => t.trim()).filter(t => t && /[\p{L}\p{N}]/u.test(t));
+  }
+  const normW = w => w.toLocaleLowerCase("bg").replace(/[^\p{L}\p{N}]/gu, "");
+  function sim(a, b){
+    a = normW(a); b = normW(b); if (!a || !b) return 0; if (a === b) return 1;
+    const m = a.length, n = b.length; let prev = Array.from({length:n+1}, (_,j) => j);
+    for (let i = 1; i <= m; i++) { const cur = [i]; for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1)); prev = cur; }
+    return 1 - prev[n] / Math.max(m, n);
+  }
+  function align(tokens, rec){
+    const n = tokens.length, m = rec.length, GAP = 0.55;
+    const D = Array.from({length:n+1}, () => new Float32Array(m+1)), P = Array.from({length:n+1}, () => new Uint8Array(m+1));
+    for (let i = 1; i <= n; i++) { D[i][0] = i*GAP; P[i][0] = 1; }
+    for (let j = 1; j <= m; j++) { D[0][j] = j*GAP; P[0][j] = 2; }
+    for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) {
+      const d = D[i-1][j-1] + (1 - sim(tokens[i-1], rec[j-1].w)), u = D[i-1][j] + GAP, l = D[i][j-1] + GAP;
+      if (d <= u && d <= l) { D[i][j] = d; P[i][j] = 0; } else if (u <= l) { D[i][j] = u; P[i][j] = 1; } else { D[i][j] = l; P[i][j] = 2; }
+    }
+    const anchor = new Array(n).fill(null); let i = n, j = m;
+    while (i > 0 || j > 0) { const p = P[i][j]; if (i > 0 && j > 0 && p === 0) { anchor[i-1] = rec[j-1]; i--; j--; } else if (i > 0 && (j === 0 || p === 1)) i--; else j--; }
+    const out = tokens.map((t,k) => anchor[k] ? {w:t, s:anchor[k].s, e:anchor[k].e} : {w:t, s:null, e:null});
+    // попълни думите без време между съседните
+    const dur = vid.duration || (rec.length ? rec[rec.length-1].e + 1 : 1);
+    let k = 0;
+    while (k < out.length) {
+      if (out[k].s !== null) { k++; continue; }
+      let r = k; while (r < out.length && out[r].s === null) r++;
+      const L = out[k-1], R = out[r];
+      let a = L ? L.e : (R ? Math.max(0, R.s - 0.4*(r-k)) : 0), b = R ? R.s : (L ? Math.min(dur, L.e + 0.4*(r-k)) : dur);
+      if (b - a < 0.12*(r-k)) { if (L) a = (L.s + L.e)/2; if (R) b = (R.s + R.e)/2; if (L) L.e = a; if (R) R.s = b; }
+      spread(out.slice(k, r).map(x => x.w), a, Math.max(b, a + 0.1*(r-k))).forEach((x, q) => { out[k+q].s = x.s; out[k+q].e = x.e; });
+      k = r;
+    }
+    for (let q = 1; q < out.length; q++) if (out[q].s < out[q-1].s) out[q].s = out[q-1].s;
+    out.forEach(x => { if (x.e < x.s + 0.05) x.e = x.s + 0.05; });
+    return out;
+  }
+  function applyScript(){
+    const tk = scriptTokens();
+    words = tk.length && asrWords.length ? align(tk, asrWords) : asrWords.map(w => Object.assign({}, w));
+    build();
+  }
+  $("realignBtn").onclick = () => { if (!asrWords.length) return; applyScript(); toast(scriptTokens().length ? "Текстът е нагласен отново ✓" : "Върнах това, което AI-ят е чул"); };
+  $("scriptIn").addEventListener("input", () => saveProject());
 
   // ---------- контроли за стил ----------
   function renderPresets(){
@@ -477,11 +538,16 @@ self.onmessage = async (e) => {
       await actx.resume();
       destNode.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     } catch(e) {}
-    const types = ["video/mp4;codecs=avc1,mp4a.40.2","video/mp4","video/webm;codecs=vp9,opus","video/webm"];
+    const types = ["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4;codecs=avc1.42E01F,mp4a.40.2","video/mp4;codecs=avc1,mp4a.40.2","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
     const type = types.find(t => { try { return MediaRecorder.isTypeSupported(t); } catch(e) { return false; } }) || "";
     let rec; try { rec = new MediaRecorder(stream, type ? {mimeType:type, videoBitsPerSecond:12000000} : undefined); } catch(e) { rec = new MediaRecorder(stream); }
     const chunks = []; rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-    rendering = true; cancelR = false;
+    rendering = true; cancelR = false; $("blocker").hidden = false;
+    const onVis = () => {
+      if (document.hidden) { if (rec.state === "recording") { vid.pause(); rec.pause(); } }
+      else if (rec.state === "paused" && !cancelR) { rec.resume(); vid.play(); toast("Продължавам записа. Не сменяй таба, докато върви."); }
+    };
+    document.addEventListener("visibilitychange", onVis);
     $("renderBtn").disabled = true; $("cancelBtn").hidden = false; $("rprog").hidden = false; $("rnote").textContent = "Записвам… не превключвай таба.";
     vid.pause(); vid.currentTime = 0; await new Promise(r => { vid.onseeked = () => { vid.onseeked = null; r(); }; });
     const done = new Promise(r => { rec.onstop = r; });
@@ -496,15 +562,19 @@ self.onmessage = async (e) => {
     vid.onended = () => { if (rec.state !== "inactive") { setTimeout(() => rec.state !== "inactive" && rec.stop(), 200); } };
     await vid.play(); frame();
     await done; vid.onended = null; vid.pause();
+    document.removeEventListener("visibilitychange", onVis); $("blocker").hidden = true;
     rendering = false; $("renderBtn").disabled = false; $("cancelBtn").hidden = true;
     if (cancelR) { $("rnote").textContent = "Спряно."; $("rprog").hidden = true; return; }
     const mt = (rec.mimeType || type || "video/webm"), ext = /mp4/.test(mt) ? "mp4" : "webm";
-    const blob = new Blob(chunks, {type: mt}), a = document.createElement("a");
+    let blob = new Blob(chunks, {type: mt});
+    if (ext === "webm" && window.ysFixWebmDuration) { try { blob = await window.ysFixWebmDuration(blob, Math.round(vid.duration * 1000), {logger:false}); } catch(e){} }
+    const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = fileName + "-subtitri." + ext; document.body.append(a); a.click(); a.remove();
     $("rnote").textContent = "Готово! Видеото е в „Изтегляния“ (" + ext.toUpperCase() + ")." + (ext === "webm" ? " Ако CapCut не го приеме, конвертирай го в MP4." : "");
     toast("Видеото е готово 🎬");
   };
   $("cancelBtn").onclick = () => { cancelR = true; };
+  $("cancelBtn2").onclick = () => { cancelR = true; if (vid.paused) { try { vid.dispatchEvent(new Event("ended")); } catch(e){} } };
 
   function srtTime(s){ const ms = Math.round(s*1000); return pad(Math.floor(ms/3600000)) + ":" + pad(Math.floor(ms/60000)%60) + ":" + pad(Math.floor(ms/1000)%60) + "," + String(ms%1000).padStart(3,"0"); }
   $("srtBtn").onclick = () => {
