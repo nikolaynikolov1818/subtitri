@@ -54,8 +54,11 @@ h1 em{font-style:normal;background:var(--hi);color:#16171C;padding:0 .18em;borde
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .prog{height:10px;background:var(--soft);border-radius:999px;overflow:hidden;margin:10px 0 4px}
 .prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.tapbox{border:2px solid var(--accent);border-radius:16px;padding:14px;margin-top:12px;background:var(--soft)}
+.tapnext{font:800 1.35rem/1.35 Manrope,sans-serif;margin:6px 0 4px}
+.cap input.tm{width:68px;text-align:center;font-variant-numeric:tabular-nums;font-size:.82rem;padding:6px 4px}
 .caps{display:grid;gap:6px;max-height:58vh;overflow:auto;margin-top:12px;padding-right:4px}
-.cap{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px 8px;border-radius:12px;border:1px solid transparent}
+.cap{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-radius:12px;border:1px solid transparent}
 .cap.on{border-color:var(--accent);background:var(--soft)}
 .cap .tm{font-variant-numeric:tabular-nums;font-size:.8rem;color:var(--muted);background:none;border:0;padding:4px}
 .cap input{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:7px 10px;width:100%;min-width:0}
@@ -120,8 +123,23 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
         <div id="asrBox">
           <label for="scriptIn" style="font-weight:800;display:block;margin-bottom:6px">📝 Твоят текст (препоръчително)</label>
           <textarea id="scriptIn" placeholder="Постави тук текста от промптъра. AI-ят ще намери кога казваш всяка дума, а на екрана ще излязат ТВОИТЕ думи, без грешки. Нещата в (скоби) и [квадратни скоби] се пропускат."></textarea>
-          <p class="note" style="margin-bottom:12px">Ако го оставиш празно, ще се ползва това, което AI-ят е чул.</p>
-          <div class="row">
+          <p class="note" style="margin-bottom:12px">Всеки ред от промптъра става отделен блок субтитри.</p>
+          <div class="row" style="margin-bottom:6px">
+            <button class="btn acc" id="tapStart">🎵 Нагласи с такт (най-точно)</button>
+          </div>
+          <p class="note" style="margin-bottom:14px">Видеото тръгва и при всеки нов ред натискаш <b>Space</b> точно когато започваш да го казваш. Отнема колкото видеото и излиза точно.</p>
+          <div class="tapbox" id="tapBox" hidden>
+            <div class="note" id="tapIdx"></div>
+            <div class="tapnext" id="tapNext"></div>
+            <div class="note" id="tapAfter"></div>
+            <div class="row" style="margin-top:10px">
+              <button class="btn acc" id="tapBtn">СЕГА (Space)</button>
+              <button class="btn ghost" id="tapBack">↶ Назад (Backspace)</button>
+              <button class="btn ghost" id="tapStop">Спри</button>
+            </div>
+          </div>
+          <details style="margin-top:4px"><summary class="note" style="cursor:pointer">Или автоматично с AI (по-бързо, но може да бърка времената)</summary>
+          <div class="row" style="margin-top:8px">
             <select id="modelSel" aria-label="Модел">
               <option value="Xenova/whisper-small">Точен (по-бавен, ~250 MB първия път)</option>
               <option value="Xenova/whisper-base">Бърз (по-неточен, ~80 MB първия път)</option>
@@ -130,6 +148,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
           </div>
           <div class="prog" id="prog" hidden><i id="progBar"></i></div>
           <p class="note" id="asrNote">Работи изцяло на твоя компютър. Първия път сваля модела, после е по-бързо.</p>
+          </details>
         </div>
         <div class="row" id="realignRow" style="margin-top:10px" hidden>
           <button class="btn sm" id="realignBtn">↻ Нагласи текста отново</button>
@@ -137,7 +156,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
         </div>
         <div class="row" style="margin-top:14px;justify-content:space-between">
           <strong id="capCount"></strong>
-          <span class="note">Ред закъснява? Пусни видеото, спри точно когато започваш да го казваш и натисни ⏱ на реда.</span>
+          <span class="note">Ред не е на време? Кликни часа вляво и напиши точното, например 0:54.5</span>
         </div>
         <div class="caps" id="caps"></div>
       </section>
@@ -237,20 +256,89 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
     $("capCount").textContent = caps.length ? caps.length + " реда субтитри" : "";
     caps.forEach((c,k) => {
       const r = el("div","cap"); r.dataset.k = k;
-      const t = el("button","tm",fmtD(c.s)); t.onclick = () => { vid.currentTime = c.s + 0.01; };
+      const t = el("input","tm"); t.type = "text"; t.value = fmtD(c.s); t.setAttribute("aria-label","Начало на ред " + (k+1));
+      t.onfocus = () => { vid.currentTime = c.s + 0.01; t.select(); };
+      t.onchange = () => setStart(c, t.value);
       const inp = el("input"); inp.type = "text"; inp.value = capText(c); inp.setAttribute("aria-label","Текст на ред " + (k+1));
       inp.onchange = () => editCap(c, inp.value);
       inp.onfocus = () => { vid.currentTime = c.s + 0.01; };
-      const sync = el("button","x","⏱"); sync.title = "Този ред започва СЕГА (мести и всички следващи)"; sync.setAttribute("aria-label","Започни реда от текущия момент");
-      sync.onclick = () => { const d = vid.currentTime - words[c.i0].s; for (let q = c.i0; q < words.length; q++) { words[q].s = Math.max(0, words[q].s + d); words[q].e = Math.max(words[q].s + 0.05, words[q].e + d); } build(); toast("Нагласено от " + fmtD(vid.currentTime) + " нататък ✓"); };
       const x = el("button","x","✕"); x.setAttribute("aria-label","Изтрий реда"); x.onclick = () => { words.splice(c.i0, c.i1-c.i0+1); build(); };
-      r.append(t, inp, sync, x); box.append(r);
+      r.append(t, inp, x); box.append(r);
     });
   }
   function spread(tokens, s, e){
     const tot = tokens.reduce((a,t) => a + t.length + 1, 0) || 1; let t0 = s;
     return tokens.map(tk => { const d = (e - s) * (tk.length + 1) / tot; const w = {w:tk, s:t0, e:t0 + d}; t0 += d; return w; });
   }
+  function parseT(v){
+    v = String(v).trim().replace(",", "."); if (!v) return NaN;
+    const p = v.split(":"); return p.length === 2 ? (+p[0])*60 + (+p[1]) : +p[0];
+  }
+  function setStart(c, val){
+    const ns = parseT(val); if (!isFinite(ns) || ns < 0) { toast("Напиши време като 0:54.5"); renderCaps(); return; }
+    const toks = words.slice(c.i0, c.i1+1).map(w => w.w), dur = Math.max(0.4, words[c.i1].e - words[c.i0].s);
+    const nextS = words[c.i1+1] ? words[c.i1+1].s : Infinity;
+    const ne = Math.min(nextS - 0.02, ns + dur) > ns + 0.3 ? Math.min(nextS - 0.02, ns + dur) : ns + dur;
+    words.splice(c.i0, toks.length, ...spread(toks, ns, ne));
+    for (let q = c.i0 - 1; q >= 0 && words[q].e > ns; q--) { words[q].e = Math.max(words[q].s + 0.05, ns - 0.02); if (words[q].s > ns) words[q].s = Math.max(0, ns - 0.1); }
+    build(); toast("Редът започва от " + fmtD(ns) + " ✓");
+  }
+  // ---------- нагласяне с такт ----------
+  let tap = null;
+  function scriptLines(){ return $("scriptIn").value.split(/\r?\n/).map(l => l.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim()).filter(l => /[\p{L}\p{N}]/u.test(l)); }
+  function renderTap(){
+    const i = tap.times.length, L = tap.lines;
+    $("tapIdx").textContent = i < L.length ? "Ред " + (i+1) + " от " + L.length + ". Натисни, когато ЗАПОЧНЕШ да го казваш:" : "Всички редове са отбелязани.";
+    $("tapNext").textContent = i < L.length ? L[i] : "Натисни „Готово“, когато свършиш да говориш.";
+    $("tapAfter").textContent = i < L.length - 1 ? "След това: " + L[i+1] : "";
+    $("tapBtn").textContent = i < L.length ? "СЕГА (Space)" : "✓ Готово (Space)";
+  }
+  async function startTap(){
+    const lines = scriptLines(); if (!lines.length) { toast("Първо постави текста си в полето горе"); $("scriptIn").focus(); return; }
+    if (!vid.duration) { toast("Изчакай видеото да се зареди"); return; }
+    tap = {lines, times: []}; $("tapBox").hidden = false; renderTap();
+    if (document.activeElement) document.activeElement.blur();
+    vid.pause(); vid.currentTime = 0; await new Promise(r => { vid.onseeked = () => { vid.onseeked = null; r(); }; });
+    vid.play();
+  }
+  function tapPress(){
+    if (!tap) return;
+    if (tap.times.length < tap.lines.length) { tap.times.push(vid.currentTime); renderTap(); }
+    else finishTap(vid.currentTime);
+    if (document.activeElement) document.activeElement.blur();
+  }
+  function tapBack(){
+    if (!tap || !tap.times.length) return;
+    const last = tap.times.pop(); vid.currentTime = Math.max(0, last - 2); if (vid.paused) vid.play(); renderTap();
+    if (document.activeElement) document.activeElement.blur();
+  }
+  function finishTap(endT){
+    if (!tap) return;
+    vid.pause();
+    const T = tap.times, L = tap.lines, out = [];
+    T.forEach((s, i) => {
+      const e = i + 1 < T.length ? T[i+1] - 0.03 : Math.max(s + 0.6, Math.min(endT || vid.duration, vid.duration));
+      out.push(...spread(L[i].split(" "), s, Math.max(e, s + 0.3)));
+    });
+    const missed = L.length - T.length;
+    tap = null; $("tapBox").hidden = true;
+    if (!out.length) return;
+    words = out; build();
+    toast(missed > 0 ? "Готово, но " + missed + " реда не бяха отбелязани" : "Готово! Всички редове са на време ✓");
+  }
+  $("tapStart").onclick = startTap;
+  $("tapBtn").onclick = tapPress;
+  $("tapBack").onclick = tapBack;
+  $("tapStop").onclick = () => { if (!tap) return; if (tap.times.length && confirm("Да запазя ли отбелязаното досега?")) finishTap(vid.currentTime); else { tap = null; vid.pause(); $("tapBox").hidden = true; } };
+  vid.addEventListener("ended", () => { if (tap) finishTap(vid.duration); });
+  document.addEventListener("keydown", e => {
+    if (!tap) return;
+    const tg = e.target && e.target.tagName;
+    if (tg === "INPUT" || tg === "TEXTAREA" || tg === "SELECT") return;
+    if (e.code === "Space") { e.preventDefault(); if (!e.repeat) tapPress(); }
+    else if (e.code === "Backspace") { e.preventDefault(); tapBack(); }
+    else if (e.code === "Escape") { $("tapStop").click(); }
+  });
   function editCap(c, text){
     const tokens = text.trim().split(/\s+/).filter(Boolean);
     words.splice(c.i0, c.i1-c.i0+1, ...spread(tokens, words[c.i0].s, words[c.i1].e));
