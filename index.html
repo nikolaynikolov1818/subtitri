@@ -55,7 +55,7 @@ h1 em{font-style:normal;background:var(--hi);color:#16171C;padding:0 .18em;borde
 .prog{height:10px;background:var(--soft);border-radius:999px;overflow:hidden;margin:10px 0 4px}
 .prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
 .caps{display:grid;gap:6px;max-height:58vh;overflow:auto;margin-top:12px;padding-right:4px}
-.cap{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-radius:12px;border:1px solid transparent}
+.cap{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:6px 8px;border-radius:12px;border:1px solid transparent}
 .cap.on{border-color:var(--accent);background:var(--soft)}
 .cap .tm{font-variant-numeric:tabular-nums;font-size:.8rem;color:var(--muted);background:none;border:0;padding:4px}
 .cap input{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:7px 10px;width:100%;min-width:0}
@@ -137,7 +137,7 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
         </div>
         <div class="row" style="margin-top:14px;justify-content:space-between">
           <strong id="capCount"></strong>
-          <span class="note">Кликни часа, за да скочиш там. Поправи грешките директно.</span>
+          <span class="note">Ред закъснява? Пусни видеото, спри точно когато започваш да го казваш и натисни ⏱ на реда.</span>
         </div>
         <div class="caps" id="caps"></div>
       </section>
@@ -211,7 +211,12 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
       if (brk) { if (cur) caps.push(cur); cur = {i0:i, i1:i}; } else cur.i1 = i;
     });
     if (cur) caps.push(cur);
-    caps.forEach((c,k) => { c.s = words[c.i0].s; c.e = words[c.i1].e; const n = caps[k+1]; if (n && words[n.i0].s - c.e < 0.35) c.e = words[n.i0].s; });
+    caps.forEach((c,k) => {
+      c.s = words[c.i0].s; c.e = words[c.i1].e;
+      const n = caps[k+1], ns = n ? words[n.i0].s : Infinity;
+      if (ns - c.e < 1.2) c.e = ns;                 // без празни дупки при кратки паузи
+      c.e = Math.min(Math.max(c.e, c.s + 0.7), ns); // всеки ред стои поне 0,7 сек
+    });
     renderCaps(); saveProject();
   }
   // автоматично запазване на проекта (по име и размер на файла)
@@ -236,8 +241,10 @@ textarea{width:100%;min-height:120px;border:1px solid var(--line);background:var
       const inp = el("input"); inp.type = "text"; inp.value = capText(c); inp.setAttribute("aria-label","Текст на ред " + (k+1));
       inp.onchange = () => editCap(c, inp.value);
       inp.onfocus = () => { vid.currentTime = c.s + 0.01; };
+      const sync = el("button","x","⏱"); sync.title = "Този ред започва СЕГА (мести и всички следващи)"; sync.setAttribute("aria-label","Започни реда от текущия момент");
+      sync.onclick = () => { const d = vid.currentTime - words[c.i0].s; for (let q = c.i0; q < words.length; q++) { words[q].s = Math.max(0, words[q].s + d); words[q].e = Math.max(words[q].s + 0.05, words[q].e + d); } build(); toast("Нагласено от " + fmtD(vid.currentTime) + " нататък ✓"); };
       const x = el("button","x","✕"); x.setAttribute("aria-label","Изтрий реда"); x.onclick = () => { words.splice(c.i0, c.i1-c.i0+1); build(); };
-      r.append(t, inp, x); box.append(r);
+      r.append(t, inp, sync, x); box.append(r);
     });
   }
   function spread(tokens, s, e){
